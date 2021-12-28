@@ -1,6 +1,6 @@
 
 **/.terraform/*
-.c9/*
+**/.c9/*
 
 # .tfstate files
 *.tfstate
