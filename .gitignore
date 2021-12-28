@@ -1,10 +1,11 @@
 
 **/.terraform/*
+**/.c9/*
 
 # .tfstate files
 *.tfstate
 *.tfstate.*
-**/.c9/*
+
 # Crash log files
 crash.log
 crash.*.log
