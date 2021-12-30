@@ -21,7 +21,7 @@ terraform {
 - Enter command <terraform login> in the cli to request API token in terraform cloud.
 - Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
 - Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
-and choose <Local> option so plan and apply occur on local machine.
+  and choose <Local> option so plan and apply occur on local machine.
 
 ----------------------------------------------------------------------------------------------------------
 
@@ -46,6 +46,8 @@ provider "aws" {
 - Create <root/variables.tf> file.
 
 
+# This Region value will be referenced in <root/providers.tf> file.
+
 variable "aws_region" {
   default = "us-east-1"       # passed region variable in <root/providers.tf> file.
 }
@@ -59,7 +61,7 @@ variable "aws_region" {
 
 - Create <root/networking> module folder.
 - Inside networking folder create <main.tf>, <outputs.tf> and <variables.tf> files.
-- In <root/networking/main.tf> file create VPC resource.
+- In <root/networking/main.tf> file create VPC resources.
 
 
 # This resource creates random integer which allows to assign new random number to VPC.
@@ -69,6 +71,7 @@ resource "random_integer" "random" {
 }
 
 # This resource creates AWS VPC.
+
 resource "aws_vpc" "my_vpc" {
   cidr_block           = var.vpc_cidr   # CIDR is referenced from <networking/variables.tf> file.
   enable_dns_hostnames = true           # Must enable dns hostname and support to provide hostname.
@@ -80,28 +83,46 @@ resource "aws_vpc" "my_vpc" {
 }
 
 
-- In <networking/variables.tf> file configure the values which references in <networking/main.tf> file.
+- Configure the values in <networking/variables.tf> file which references in <networking/main.tf> file.
 
+
+# This variable being referenced in VPC resource in <networking/main.tf>
 
 variable "vpc_cidr" {
   type = string
 }
 
 
-- 
+- Configure <networking/outputs.tf> file so that <root/main.tf> can consume VPC outputs from <networking/main.tf> to create VPC
+  and pass them on to other modules.
 
 
+# This out will be consumed by <root/main.tf> VPC module block to create VPC.
 
-- Run <terraform fmt -recursive> to format the code.
-
-
-
-
-
+output "vpc_id" {
+  value = aws_vpc.mtc_vpc.id
+}
 
 
+- In <root/main.tf> file create module and reference VPC resource from <networking/main.tf> file.
+
+
+# Deploys <networking/main.tf> resources.
+
+module "networking" {
+  source   = "./networking"   # Referencing to <root/networking> module
+  vpc_cidr = "10.123.0.0/16"  # This value goes to <networking/variables.tf> then <networking/main.tf> which is <var.vpc_cidr>
+}
+
+
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
 
 ----------------------------------------------------------------------------------------------------------
+
 
 
 
