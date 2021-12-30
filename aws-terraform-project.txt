@@ -6,6 +6,7 @@
 
 - Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
 
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 terraform {
   cloud {
     organization = "uzbek"
@@ -15,6 +16,7 @@ terraform {
     }
   }
 }
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 Enter command <terraform login> in the cli to request API token in terraform cloud.
 Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
@@ -27,6 +29,7 @@ and choose <Local> option so plan and apply occur on local machine.
 
 - Create <root/providers.tf file>
 
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 terraform {
   required_providers {
     aws = {
@@ -39,13 +42,15 @@ terraform {
 provider "aws" {
   region = var.aws_region     # passed region variable name from <root/variables.tf> file.
 }
-
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 - Create <root/variables.tf> file.
 
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 variable "aws_region" {
   default = "us-east-1"       # passed region variable in <root/providers.tf> file.
 }
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 And run <terraform init> to download plugins and initialize the provider.
 
