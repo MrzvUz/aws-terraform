@@ -6,7 +6,7 @@
 
 - Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
 
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 terraform {
   cloud {
     organization = "uzbek"
@@ -16,11 +16,11 @@ terraform {
     }
   }
 }
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-Enter command <terraform login> in the cli to request API token in terraform cloud.
-Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
-Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
+
+- Enter command <terraform login> in the cli to request API token in terraform cloud.
+- Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
+- Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
 and choose <Local> option so plan and apply occur on local machine.
 
 ----------------------------------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ and choose <Local> option so plan and apply occur on local machine.
 
 - Create <root/providers.tf file>
 
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 terraform {
   required_providers {
     aws = {
@@ -38,28 +38,61 @@ terraform {
   }
 }
 
-# Configure the AWS Provider
 provider "aws" {
   region = var.aws_region     # passed region variable name from <root/variables.tf> file.
 }
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 - Create <root/variables.tf> file.
 
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 variable "aws_region" {
   default = "us-east-1"       # passed region variable in <root/providers.tf> file.
 }
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-And run <terraform init> to download plugins and initialize the provider.
+
+- Run <terraform init> to download plugins and initialize the provider.
 
 ----------------------------------------------------------------------------------------------------------
 
 003. Create VPC resource.
 
+- Create <root/networking> module folder.
+- Inside networking folder create <main.tf>, <outputs.tf> and <variables.tf> files.
+- In <root/networking/main.tf> file create VPC resource.
 
 
+# This resource creates random integer which allows to assign new random number to VPC.
+resource "random_integer" "random" {
+  min = 1           # Assigns the lowest number.
+  max = 100         # Assigns the highest number.
+}
+
+# This resource creates AWS VPC.
+resource "aws_vpc" "my_vpc" {
+  cidr_block           = var.vpc_cidr   # CIDR is referenced from <networking/variables.tf> file.
+  enable_dns_hostnames = true           # Must enable dns hostname and support to provide hostname.
+  enable_dns_support   = true
+
+  tags = {
+    Name = "my_vpc-${random_integer.random.id}"   # Referenced random integer resource to assign random integer ID.
+  }
+}
+
+
+- In <networking/variables.tf> file configure the values which references in <networking/main.tf> file.
+
+
+variable "vpc_cidr" {
+  type = string
+}
+
+
+- 
+
+
+
+- Run <terraform fmt -recursive> to format the code.
 
 
 
