@@ -1,3 +1,57 @@
+--- AWS 3 Tier Application Project Using Terraform ---
+
+*** Create aws-terraform project folder and configure backend ***
+
+* Configure backend to store terraform state and lock the state file for teamwork.
+- Create backend.tf file:
+
+terraform {
+  cloud {
+    organization = "uzbek"
+
+    workspaces {
+      name = "devops"
+    }
+  }
+}
+
+Enter command <terraform login> in the cli to request API token in terraform cloud.
+Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
+Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
+and choose <Local> option so plan and apply occur on local machine.
+
+
+*** Configure AWS provider ***
+
+* 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
