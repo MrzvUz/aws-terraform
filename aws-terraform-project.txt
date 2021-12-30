@@ -1,9 +1,10 @@
---- AWS 3 Tier Application Project Using Terraform ---
+----------------------------------------------------------------------------------------------------------
 
-*** Create aws-terraform project folder and configure backend ***
+*** AWS 3 Tier Application Project Using Terraform ***
 
-* Configure backend to store terraform state and lock the state file for teamwork.
-- Create backend.tf file:
+001. Create aws-terraform project folder and configure backend.
+
+- Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
 
 terraform {
   cloud {
@@ -20,28 +21,37 @@ Press the link on cli and give a name for token. Copy the generated API token an
 Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
 and choose <Local> option so plan and apply occur on local machine.
 
+----------------------------------------------------------------------------------------------------------
 
-*** Configure AWS provider ***
+002. Configure AWS provider.
 
-* 
+- Create <root/providers.tf file>
 
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+  }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Configure the AWS Provider
+provider "aws" {
+  region = var.aws_region     # passed region variable name from <root/variables.tf> file.
+}
 
 
+- Create <root/variables.tf> file.
+
+variable "aws_region" {
+  default = "us-east-1"       # passed region variable in <root/providers.tf> file.
+}
+
+And run <terraform init> to download plugins and initialize the provider.
+
+----------------------------------------------------------------------------------------------------------
+
+003. Create VPC resource.
 
 
 
@@ -53,7 +63,15 @@ and choose <Local> option so plan and apply occur on local machine.
 
 
 
+----------------------------------------------------------------------------------------------------------
 
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------
 
 
 * Creating Application Load Balancer:
