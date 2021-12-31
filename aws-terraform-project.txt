@@ -97,7 +97,11 @@ resource "aws_vpc" "mtc_vpc" {
 
 # This variable being referenced in VPC resource in <networking/main.tf>
 
-variable "vpc_cidr" {
+variable "vpc_cidr" {   # Referenced from "vpc_cidr" in <root/main.tf>, <networking/main.tf, variables.tf> files.
+  type = string
+}
+
+variable "access_ip" {  # Referenced from <root/mainl.tf>, <networking/main.tf, variables.tf> files and passed to security group resources.
   type = string
 }
 
@@ -156,6 +160,9 @@ module "networking" {
   max_subnets      = 20   # Creates needed subnets. Referenced from <networking.variables.tf> file.
   private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet(local.vpc_cidr, 8, i)]   # cidr_block referenced from "locals" block above.
   public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet(local.vpc_cidr, 8, i)]   # cidr_block referenced from "locals" block above.
+  max_subnets      = 20
+  access_ip        = var.access_ip    # referenced from <networking.main.tf, variables.tf> files.
+  security_groups  = local.security_groups
 }
 
 # I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
@@ -178,6 +185,7 @@ variable "private_cidrs" {}
 variable "public_sn_count" {}
 variable "private_sn_count" {}
 variable "max_subnets" {}
+variable "access_ip" {}
 
 
 - Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
@@ -303,4 +311,52 @@ resource "aws_route_table_association" "mtc_public_assoc" {
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
 ----------------------------------------------------------------------------------------------------------
+
+006. Create VPC Security Groups.
+
+- Create "aws_security_group" resource in <networking.main.tf> file.
+
+
+# This resource creates public Security Group.
+
+resource "aws_security_group" "mtc_sg" {
+  for_each    = var.security_groups
+  name        = each.value.name
+  description = each.value.description
+  vpc_id      = aws_vpc.mtc_vpc.id
+
+
+
+  #public Security Group
+  dynamic "ingress" {
+    for_each = each.value.ingress
+    content {
+      from_port   = ingress.value.from
+      to_port     = ingress.value.to
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"    # Value "-1" means all protocols.
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+- In <networking/validates.tf> file create variable for "access_ip" to reference "cidr_blocks" in "dynamic ingress" 
+  of Public Security Group. And also reference in <root/main.tf> and <root/terraform.tfvars> files which I have already
+  resourced above.
+- Create <root/terraform.tfvars> file to store credentials such as IP addresses. This file must be included in .gitignore file.
+
+
+access_ip = "0.0.0.0/0"
+
+
+This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> 
+and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
+
 
