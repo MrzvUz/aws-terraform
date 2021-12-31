@@ -217,3 +217,60 @@ resource "aws_subnet" "mtc_private_subnet" {
 
 ----------------------------------------------------------------------------------------------------------
 
+005. Create Route Tables and The Internet Gateway.
+
+- Create aws_internet_gateway resource in <networking/main.tf> file.
+
+
+resource "aws_internet_gateway" "mtc_internet_gateway" {
+  vpc_id = aws_vpc.mtc_vpc.id
+
+  tags = {
+    Name = "mtc_igw"
+  }
+}
+
+
+- Create public "aws_route_table" in <networking/main.tf> file.
+
+
+resource "aws_route_table" "mtc_public_rt" {
+  vpc_id = aws_vpc.mtc_vpc.id
+
+  tags = {
+    Name = "mtc_public"
+  }
+}
+
+
+- Create default public "aws_route" in <networking/main.tf> file to auto assign to default route 
+  if no public route table explicitly specified.
+
+
+resource "aws_route" "default_route" {
+  route_table_id         = aws_route_table.mtc_public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.mtc_internet_gateway.id
+}
+
+
+- Create private "aws_default_route_table" in <networking/main.tf> file to auto assign private route tables.
+
+
+resource "aws_default_route_table" "mtc_private_rt" {
+  default_route_table_id = aws_vpc.mtc_vpc.default_route_table_id
+
+  tags = {
+    Name = "mtc_private"
+  }
+}
+
+
+- Create "aws_route_table_association" in <networking/main.tf> file to associate public RTs with public subnets.
+
+
+resource "aws_route_table_association" "mtc_public_assoc" {
+  count          = var.public_sn_count
+  subnet_id      = aws_subnet.mtc_public_subnet.*.id[count.index]
+  route_table_id = aws_route_table.mtc_public_rt.id
+}
