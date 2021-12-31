@@ -135,6 +135,7 @@ module "networking" {
   vpc_cidr         = "10.123.0.0/16"
   private_sn_count = 3    # Creates 3 private subnets of odd numbers: 10.123.1.0/24, 10.123.3.0/24, 10.123.5.0/24
   public_sn_count  = 2    # Creates 2 public subnets of even numbers: 10.123.2.0/24, 10.123.4.0/24
+  max_subnets      = 20   # Creates needed subnets. Referenced from <networking.variables.tf> file.
   private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
   public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
 }
@@ -151,13 +152,14 @@ which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
 - Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
 
 
-# Referenced to module "networking" block in <root/main.tf> file.
+# Created these variables in <networking/variables.tf> and referenced to module "networking" block in <root/main.tf> file.
 
 variable "vpc_cidr" {}
 variable "public_cidrs" {}
 variable "private_cidrs" {}
 variable "public_sn_count" {}
 variable "private_sn_count" {}
+variable "max_subnets" {}
 
 
 - Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
@@ -168,6 +170,15 @@ variable "private_sn_count" {}
 data "aws_availability_zones" "available" {}  # Referenced in aws_subnet resource.
 
 
+- Create random_shuffle resource to randomly shuffle AZs and assign subnet to each shuffled AZs so I don't run out of AZs.
+
+
+resource "random_shuffle" "public_az" {
+  input        = data.aws_availability_zones.available.names    # Referenced to AZ data source above.
+  result_count = var.max_subnets    # Referenced to max_subnets in <networking/variables.tf>
+}
+
+
 # This resource creates public Subnets.
 
 resource "aws_subnet" "mtc_public_subnet" {
@@ -175,7 +186,7 @@ resource "aws_subnet" "mtc_public_subnet" {
   vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
   cidr_block              = var.public_cidrs[count.index] # Pulls the cidr blocks one by one and assigns to each subnet.
   map_public_ip_on_launch = true                  # Automatically maps public IP to public subnet on launch.
-  availability_zone       = data.aws_availability_zones.available.names[count.index]  # Referenced from AZ data source.
+  availability_zone       = random_shuffle.public_az.result[count.index]  # Referenced from random_shuffle resource above.
 
   tags = {
     Name = "mtc_public_${count.index + 1}"
@@ -189,7 +200,7 @@ resource "aws_subnet" "mtc_private_subnet" {
   vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
   cidr_block              = var.private_cidrs[count.index]  # Pulls the cidr blocks one by one and assigns to each subnet.
   map_public_ip_on_launch = false                 # Doesn't map public IP on launch thus it becomes private subnet.
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  availability_zone       = random_shuffle.public_az.result[count.index]  # Referenced from random_shuffle resource above.
 
   tags = {
     Name = "mtc_private_${count.index + 1}"
