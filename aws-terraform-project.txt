@@ -133,11 +133,19 @@ module "networking" {
 module "networking" {
   source           = "./networking"
   vpc_cidr         = "10.123.0.0/16"
-  private_sn_count = 3
-  public_sn_count  = 2
+  private_sn_count = 3    # Creates 3 private subnets of odd numbers: 10.123.1.0/24, 10.123.3.0/24, 10.123.5.0/24
+  public_sn_count  = 2    # Creates 2 public subnets of even numbers: 10.123.2.0/24, 10.123.4.0/24
   private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
   public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
 }
+
+# I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
+Example of assigning IP addresses dynamically: 
+On the CLI type "terraform console" and pass the for loop function: [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
+For private_cidrs, for index of in range of 1 to 255 steps over by 2 and calculates from cidrsubnet of 10.123.0.0/16, increment to 8
+which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
+For public_cidrs, for index of in range of 2 to 255 steps over by 2 and calculates from cidrsubnet of 10.123.0.0/16, increment to 8
+which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
 
 
 - Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
@@ -155,10 +163,10 @@ variable "private_cidrs" {}
 # This resource creates public Subnets.
 
 resource "aws_subnet" "mtc_public_subnet" {
-  count                   = var.public_sn_count
-  vpc_id                  = aws_vpc.mtc_vpc.id
-  cidr_block              = var.public_cidrs[count.index]
-  map_public_ip_on_launch = true
+  count                   = var.public_sn_count   # Referenced from <root/main.tf> "networking" module.
+  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
+  cidr_block              = var.public_cidrs[count.index] # Pulls the cidr blocks one by one and assigns to each subnet.
+  map_public_ip_on_launch = true                  # Automatically maps public IP to public subnet on launch.
   availability_zone       = data.aws_availability_zones.available.names[count.index]
 
   tags = {
@@ -169,10 +177,10 @@ resource "aws_subnet" "mtc_public_subnet" {
 # This resource creates private Subnets.
 
 resource "aws_subnet" "mtc_private_subnet" {
-  count                   = var.private_sn_count
-  vpc_id                  = aws_vpc.mtc_vpc.id
-  cidr_block              = var.private_cidrs[count.index]
-  map_public_ip_on_launch = false
+  count                   = var.private_sn_count  # Referenced from <root/main.tf> "networking" module.
+  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
+  cidr_block              = var.private_cidrs[count.index]  # Pulls the cidr blocks one by one and assigns to each subnet.
+  map_public_ip_on_launch = false                 # Doesn't map public IP on launch thus it becomes private subnet.
   availability_zone       = data.aws_availability_zones.available.names[count.index]
 
   tags = {
@@ -181,12 +189,12 @@ resource "aws_subnet" "mtc_private_subnet" {
 }
 
 
-
-
 - Run <terraform fmt -recursive> to format and clean the code.
 - Run <terraform init> to initialize plugins and new resources.
 - Run <terraform validate> to validate the code.
 - Run <terraform plan> to see which resources will be created.
 - Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ----------------------------------------------------------------------------------------------------------
+
