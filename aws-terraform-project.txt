@@ -156,9 +156,17 @@ which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
 variable "vpc_cidr" {}
 variable "public_cidrs" {}
 variable "private_cidrs" {}
+variable "public_sn_count" {}
+variable "private_sn_count" {}
 
 
-- Next create public aws_subnet resource in <networking/main.tf> file.
+- Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
+
+
+# This data source enables to assign random Availability zone for each subnet which mitigates running out of AZs.
+
+data "aws_availability_zones" "available" {}  # Referenced in aws_subnet resource.
+
 
 # This resource creates public Subnets.
 
@@ -167,7 +175,7 @@ resource "aws_subnet" "mtc_public_subnet" {
   vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
   cidr_block              = var.public_cidrs[count.index] # Pulls the cidr blocks one by one and assigns to each subnet.
   map_public_ip_on_launch = true                  # Automatically maps public IP to public subnet on launch.
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  availability_zone       = data.aws_availability_zones.available.names[count.index]  # Referenced from AZ data source.
 
   tags = {
     Name = "mtc_public_${count.index + 1}"
