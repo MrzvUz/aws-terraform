@@ -72,13 +72,13 @@ resource "random_integer" "random" {
 
 # This resource creates AWS VPC.
 
-resource "aws_vpc" "my_vpc" {
+resource "aws_vpc" "mtc_vpc" {
   cidr_block           = var.vpc_cidr   # CIDR is referenced from <networking/variables.tf> file.
   enable_dns_hostnames = true           # Must enable dns hostname and support to provide hostname.
   enable_dns_support   = true
 
   tags = {
-    Name = "my_vpc-${random_integer.random.id}"   # Referenced random integer resource to assign random integer ID.
+    Name = "mtc_vpc-${random_integer.random.id}"   # Referenced random integer resource to assign random integer ID.
   }
 }
 
@@ -123,3 +123,70 @@ module "networking" {
 
 ----------------------------------------------------------------------------------------------------------
 
+004. Create Public and Private Subnets and CIDR blocks.
+
+- In <root/main.tf> file update "networking" module to reference "networking" module.
+
+
+# Deploy Networking Resources
+
+module "networking" {
+  source           = "./networking"
+  vpc_cidr         = "10.123.0.0/16"
+  private_sn_count = 3
+  public_sn_count  = 2
+  private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
+  public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
+}
+
+
+- Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
+
+
+# Referenced to module "networking" block in <root/main.tf> file.
+
+variable "vpc_cidr" {}
+variable "public_cidrs" {}
+variable "private_cidrs" {}
+
+
+- Next create public aws_subnet resource in <networking/main.tf> file.
+
+# This resource creates public Subnets.
+
+resource "aws_subnet" "mtc_public_subnet" {
+  count                   = var.public_sn_count
+  vpc_id                  = aws_vpc.mtc_vpc.id
+  cidr_block              = var.public_cidrs[count.index]
+  map_public_ip_on_launch = true
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "mtc_public_${count.index + 1}"
+  }
+}
+
+# This resource creates private Subnets.
+
+resource "aws_subnet" "mtc_private_subnet" {
+  count                   = var.private_sn_count
+  vpc_id                  = aws_vpc.mtc_vpc.id
+  cidr_block              = var.private_cidrs[count.index]
+  map_public_ip_on_launch = false
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "mtc_private_${count.index + 1}"
+  }
+}
+
+
+
+
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+
+----------------------------------------------------------------------------------------------------------
