@@ -139,14 +139,6 @@ module "networking" {
 004. Create Public and Private Subnets and CIDR blocks.
 
 
-- First create "locals" block so that I don't repeat and have value in one place and reference elsewhere.
-
-
-locals {
-  vpc_cidr = "10.123.0.0/16"  # Referenced to "vpc_cidr", "private_cidrs" and "public_cidrs" below.
-}
-
-
 - In <root/main.tf> file update "networking" module to reference "networking" module.
 
 
@@ -162,7 +154,7 @@ module "networking" {
   public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet(local.vpc_cidr, 8, i)]   # cidr_block referenced from "locals" block above.
   max_subnets      = 20
   access_ip        = var.access_ip    # referenced from <networking.main.tf, variables.tf> files.
-  security_groups  = local.security_groups
+  security_groups  = local.security_groups  # Referenced from <root/locals.tf> file.
 }
 
 # I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
@@ -177,7 +169,7 @@ which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
 - Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
 
 
-# Created these variables in <networking/variables.tf> and referenced to module "networking" block in <root/main.tf> file.
+# Created these variables in <networking/variables.tf> and referenced to module "networking" block in <root/main.tf, locals.tf> files.
 
 variable "vpc_cidr" {}
 variable "public_cidrs" {}
@@ -186,6 +178,7 @@ variable "public_sn_count" {}
 variable "private_sn_count" {}
 variable "max_subnets" {}
 variable "access_ip" {}
+variable "security_groups" {}
 
 
 - Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
@@ -314,10 +307,60 @@ resource "aws_route_table_association" "mtc_public_assoc" {
 
 006. Create VPC Security Groups.
 
+- First create <root/locals.tf> file and pass the following blocks so that I don't have to repeat
+  and have value in one place and reference elsewhere.
+
+
+locals {
+  vpc_cidr = "10.123.0.0/16"  # Referenced to "vpc_cidr", "private_cidrs" and "public_cidrs" below.
+}
+
+
+# This "locals" block wil be dynamically  referenced in <networking.main.tf>
+
+locals {
+  security_groups = {
+    public = {
+      name        = "public_sg"
+      description = "public access"
+      ingress = {
+        ssh = {
+          from        = 22
+          to          = 22
+          protocol    = "tcp"
+          cidr_blocks = [var.access_ip]
+        }
+        http = {
+          from        = 80
+          to          = 80
+          protocol    = "tcp"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+      }
+    }
+    rds = {
+      name        = "rds_sg"
+      description = "rds access"
+      ingress = {
+        mysql = {
+          from        = 3306
+          to          = 3306
+          protocol    = "tcp"
+          cidr_blocks = [local.vpc_cidr]
+        }
+      }
+    }
+  }
+}
+
+# This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> 
+  and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
+
+
 - Create "aws_security_group" resource in <networking.main.tf> file.
 
 
-# This resource creates public Security Group.
+# This resource creates public Security Group. It's referenced from <root/locals.tf> file.
 
 resource "aws_security_group" "mtc_sg" {
   for_each    = var.security_groups
@@ -325,9 +368,8 @@ resource "aws_security_group" "mtc_sg" {
   description = each.value.description
   vpc_id      = aws_vpc.mtc_vpc.id
 
+  # Public Security Group
 
-
-  #public Security Group
   dynamic "ingress" {
     for_each = each.value.ingress
     content {
@@ -355,8 +397,16 @@ resource "aws_security_group" "mtc_sg" {
 
 access_ip = "0.0.0.0/0"
 
+# This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> 
+  and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
 
-This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> 
-and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
 
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
+
+----------------------------------------------------------------------------------------------------------
 
