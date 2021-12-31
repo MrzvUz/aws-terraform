@@ -182,8 +182,8 @@ resource "random_shuffle" "public_az" {
 # This resource creates public Subnets.
 
 resource "aws_subnet" "mtc_public_subnet" {
-  count                   = var.public_sn_count   # Referenced from <root/main.tf> "networking" module.
-  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
+  count                   = var.public_sn_count   # Referenced from <root/main.tf> "networking" module and variables.tf file.
+  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module and variables.tf file.
   cidr_block              = var.public_cidrs[count.index] # Pulls the cidr blocks one by one and assigns to each subnet.
   map_public_ip_on_launch = true                  # Automatically maps public IP to public subnet on launch.
   availability_zone       = random_shuffle.public_az.result[count.index]  # Referenced from random_shuffle resource above.
@@ -196,8 +196,8 @@ resource "aws_subnet" "mtc_public_subnet" {
 # This resource creates private Subnets.
 
 resource "aws_subnet" "mtc_private_subnet" {
-  count                   = var.private_sn_count  # Referenced from <root/main.tf> "networking" module.
-  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module.
+  count                   = var.private_sn_count  # Referenced from <root/main.tf> "networking" module and variables.tf file.
+  vpc_id                  = aws_vpc.mtc_vpc.id    # Referenced from <root/main.tf> "networking" module and variables.tf file.
   cidr_block              = var.private_cidrs[count.index]  # Pulls the cidr blocks one by one and assigns to each subnet.
   map_public_ip_on_launch = false                 # Doesn't map public IP on launch thus it becomes private subnet.
   availability_zone       = random_shuffle.public_az.result[count.index]  # Referenced from random_shuffle resource above.
