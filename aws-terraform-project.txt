@@ -77,8 +77,17 @@ resource "aws_vpc" "mtc_vpc" {
   enable_dns_hostnames = true           # Must enable dns hostname and support to provide hostname.
   enable_dns_support   = true
 
+  # This tags name is going to be passed to AWS.
+
   tags = {
     Name = "mtc_vpc-${random_integer.random.id}"   # Referenced random integer resource to assign random integer ID.
+  }
+
+  # This lifecycle policy will force vpc destruction until new VPC is created so IGW can associate with first.
+    Otherwise, if VPC is destroyed first, for IGW there is no VPC to associate with, so "terraform destroy" will time out.
+  }
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -125,6 +134,15 @@ module "networking" {
 
 004. Create Public and Private Subnets and CIDR blocks.
 
+
+- First create "locals" block so that I don't repeat and have value in one place and reference elsewhere.
+
+
+locals {
+  vpc_cidr = "10.123.0.0/16"  # Referenced to "vpc_cidr", "private_cidrs" and "public_cidrs" below.
+}
+
+
 - In <root/main.tf> file update "networking" module to reference "networking" module.
 
 
@@ -132,12 +150,12 @@ module "networking" {
 
 module "networking" {
   source           = "./networking"
-  vpc_cidr         = "10.123.0.0/16"
+  vpc_cidr         = local.vpc_cidr   # Referenced from "locals" block above.
   private_sn_count = 3    # Creates 3 private subnets of odd numbers: 10.123.1.0/24, 10.123.3.0/24, 10.123.5.0/24
   public_sn_count  = 2    # Creates 2 public subnets of even numbers: 10.123.2.0/24, 10.123.4.0/24
   max_subnets      = 20   # Creates needed subnets. Referenced from <networking.variables.tf> file.
-  private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
-  public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
+  private_cidrs    = [for i in range(1, 255, 2) : cidrsubnet(local.vpc_cidr, 8, i)]   # cidr_block referenced from "locals" block above.
+  public_cidrs     = [for i in range(2, 255, 2) : cidrsubnet(local.vpc_cidr, 8, i)]   # cidr_block referenced from "locals" block above.
 }
 
 # I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
