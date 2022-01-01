@@ -429,4 +429,138 @@ resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
 
 ----------------------------------------------------------------------------------------------------------
 
-007. 
+007. RDS set up.
+
+- Create <root/database> folder and create <database/main.tf, variables.tf> files.
+- a. In <database/main.tf> file create the "aws_db_instance" resource.
+
+
+# --- database/main.tf ---
+
+resource "aws_db_instance" "mtc_db" {
+  allocated_storage      = 10
+  engine                 = "mysql"
+  engine_version         = var.db_engine_version
+  instance_class         = var.db_instance_class
+  name                   = var.dbname
+  username               = var.dbuser
+  password               = var.dbpassword
+  db_subnet_group_name   = var.db_subnet_group_name
+  vpc_security_group_ids = var.vpc_security_group_ids
+  identifier             = var.db_identifier
+  skip_final_snapshot    = var.skip_db_snapshot
+  tags = {
+    Name = "mtc-db"
+  }
+}
+
+
+- b. In <database/variables.tf> file reference parameters from module "database" in <root/main.tf> file.
+
+
+# --- database/variables.tf ---
+
+variable "db_instance_class" {}
+variable "dbname" {}
+variable "dbuser" {}
+variable "dbpassword" {}
+variable "vpc_security_group_ids" {}
+variable "db_subnet_group_name" {}
+variable "db_engine_version" {}
+variable "db_identifier" {}
+variable "skip_db_snapshot" {}
+
+
+- c. In <root/main.tf> file create "database" module and configure key value parameters to reference in <database/variables.tf> file.
+
+
+# --- root/main.tf ---
+
+module "database" {
+  source                 = "./database"
+  db_engine_version      = "5.7.22"
+  db_instance_class      = "db.t2.micro"
+  dbname                 = var.dbname
+  dbuser                 = var.dbuser
+  dbpassword             = var.dbpassword
+  db_identifier          = "mtc-db"
+  skip_db_snapshot       = true
+  db_subnet_group_name   = module.networking.db_subnet_group_name[0]
+  vpc_security_group_ids = module.networking.db_security_group
+}
+
+
+- d. In <root/terraform.tfvars> file configure sensitive data to reference in <root/main.tf> "database" module.
+
+
+# --- root/terraform.tfvars ---
+
+access_ip = "0.0.0.0/0"
+
+#--db vars --
+dbname     = "rancher"
+dbuser     = "bobby"
+dbpassword = "s00p3rS3cr3t"
+
+
+- e. In <root/variables.tf> file configure variables to reference in <root/main.tf> file.
+
+
+# --- root/variables.tf ---
+
+variable "aws_region" {
+  default = "us-west-2"
+}
+
+variable "access_ip" {}
+
+#-------database variables
+
+variable "dbname" {
+  type = string
+}
+variable "dbuser" {
+  type = string
+}
+variable "dbpassword" {
+  type      = string
+  sensitive = true
+}
+
+
+- f. In <networking/variables.tf> file configure outputs so "database" module can access outputs
+     for "db_subnet_group_name" and "db_security_group".
+
+
+# --- networking/outputs.tf ---
+
+output "vpc_id" {
+  value = aws_vpc.mtc_vpc.id
+}
+
+output "db_subnet_group_name" {
+  value = aws_db_subnet_group.mtc_rds_subnetgroup.*.name
+}
+
+output "db_security_group" {
+  value = aws_security_group.mtc_sg["rds"].id
+}
+
+output "public_sg" {
+  value = aws_security_group.mtc_sg["public"].id
+}
+
+output "public_subnets" {
+  value = aws_subnet.mtc_public_subnet.*.id
+}
+
+
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
+
+----------------------------------------------------------------------------------------------------------
+
