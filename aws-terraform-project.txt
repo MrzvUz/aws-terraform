@@ -1,6 +1,7 @@
-----------------------------------------------------------------------------------------------------------
 
-*** AWS 3 Tier Application Project Using Terraform ***
+                          *** AWS 3 Tier Application Project Using Terraform ***
+
+----------------------------------------------------------------------------------------------------------
 
 001. Create aws-terraform project folder and configure backend.
 
