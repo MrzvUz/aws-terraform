@@ -508,13 +508,15 @@ dbpassword = "s00p3rS3cr3t"
 
 # --- root/variables.tf ---
 
+#--------aws providers region variable
+
 variable "aws_region" {
   default = "us-west-2"
 }
 
 variable "access_ip" {}
 
-#-------database variables
+#-------variables for database
 
 variable "dbname" {
   type = string
