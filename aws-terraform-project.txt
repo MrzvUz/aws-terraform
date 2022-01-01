@@ -156,6 +156,7 @@ module "networking" {
   max_subnets      = 20
   access_ip        = var.access_ip    # referenced from <networking.main.tf, variables.tf> files.
   security_groups  = local.security_groups  # Referenced from <root/locals.tf> file.
+  db_subnet_group  = false    # Referenced from <networking/main.tf, variables.tf> which determines to deploy subnet group or not. 
 }
 
 # I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
@@ -180,6 +181,7 @@ variable "private_sn_count" {}
 variable "max_subnets" {}
 variable "access_ip" {}
 variable "security_groups" {}
+variable "db_subnet_group" {}
 
 
 - Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
@@ -402,6 +404,22 @@ access_ip = "0.0.0.0/0"
   and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
 
 
+- VPC RDS Subnet Group and Conditionals which dictates the pull of subnets for RDS instances.
+
+
+# This resource creates "aws_db_subnet_group" 
+
+resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
+  count      = var.db_subnet_group == "true" ? 1 : 0    # Determines to deploy subnet group or not.
+  name       = "mtc_rds_subnetgroup"
+  subnet_ids = aws_subnet.mtc_private_subnet.*.id
+  tags = {
+    Name = "mtc_rds_sng"
+  }
+}
+
+
+
 - Run <terraform fmt -recursive> to format and clean the code.
 - Run <terraform init> to initialize plugins and new resources.
 - Run <terraform validate> to validate the code.
@@ -411,3 +429,4 @@ access_ip = "0.0.0.0/0"
 
 ----------------------------------------------------------------------------------------------------------
 
+007. 
