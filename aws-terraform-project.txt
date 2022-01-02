@@ -582,7 +582,7 @@ resource "aws_lb" "mtc_lb" {
 }
 
 resource "aws_lb_target_group" "mtc_tg" {
-  name     = "mtc-lb-tg-${substr(uuid(), 0, 3)}"
+  name     = "mtc-lb-tg-${substr(uuid(), 0, 3)}" # uuid() - generates random ID and substr() - func gets subtracts it.
   port     = var.tg_port
   protocol = var.tg_protocol
   vpc_id   = var.vpc_id
@@ -599,12 +599,12 @@ resource "aws_lb_target_group" "mtc_tg" {
 }
 
 resource "aws_lb_listener" "mtc_lb_listener" {
-  load_balancer_arn = aws_lb.mtc_lb.arn
+  load_balancer_arn = aws_lb.mtc_lb.arn   # This value gets the ARN ALB's ARN and attaches it to the listener.
   port              = var.listener_port
   protocol          = var.listener_protocol
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.mtc_tg.arn
+    target_group_arn = aws_lb_target_group.mtc_tg.arn   # This value retrieves the target group ARN and attaches to the listener.
   }
 }
 
@@ -627,26 +627,7 @@ variable "listener_port" {}
 variable "listener_protocol" {}
 
 
-- c. In <root/main.tf> file configure "loadbalancing" module.
-
-
-module "loadbalancing" {
-  source                  = "./loadbalancing"
-  public_sg               = module.networking.public_sg       # Referenced from <networking.outputs.tf> file.
-  public_subnets          = module.networking.public_subnets  # Referenced from <networking.outputs.tf> file.
-  tg_port                 = 8000
-  tg_protocol             = "HTTP"
-  vpc_id                  = module.networking.vpc_id
-  elb_healthy_threshold   = 2
-  elb_unhealthy_threshold = 2
-  elb_timeout             = 3
-  elb_interval            = 30
-  listener_port           = 80
-  listener_protocol       = "HTTP"
-}
-
-
-- d. In <networking/outputs.tf> file configure "public_sg" and "public_subnets" outputs so <root/main.tf> 
+- c. In <networking/outputs.tf> file configure "public_sg" and "public_subnets" outputs so <root/main.tf> 
      "loadbalancing" module can access and pull them from <networking/outputs.tf>. file.
 
 
@@ -672,4 +653,32 @@ output "public_subnets" {
   value = aws_subnet.mtc_public_subnet.*.id
 }
 
+
+- d. In <root/main.tf> file configure "loadbalancing" module.
+
+
+module "loadbalancing" {
+  source                  = "./loadbalancing"
+  public_sg               = module.networking.public_sg       # Referenced from <networking.outputs.tf> file.
+  public_subnets          = module.networking.public_subnets  # Referenced from <networking.outputs.tf> file.
+  tg_port                 = 8000
+  tg_protocol             = "HTTP"
+  vpc_id                  = module.networking.vpc_id
+  elb_healthy_threshold   = 2
+  elb_unhealthy_threshold = 2
+  elb_timeout             = 3
+  elb_interval            = 30
+  listener_port           = 80
+  listener_protocol       = "HTTP"
+}
+
+
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
+
+----------------------------------------------------------------------------------------------------------
 
