@@ -1,7 +1,7 @@
 
                           *** AWS 3 Tier Application Project Using Terraform ***
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 001. Create aws-terraform project folder and configure backend.
 
@@ -24,7 +24,7 @@ terraform {
 - Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General>
   and choose <Local> option so plan and apply occur on local machine.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 002. Configure AWS provider.
 
@@ -56,7 +56,7 @@ variable "aws_region" {
 
 - Run <terraform init> to download plugins and initialize the provider.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 003. Create VPC resource.
 
@@ -66,6 +66,7 @@ variable "aws_region" {
 
 
 # This resource creates random integer which allows to assign new random number to VPC.
+
 resource "random_integer" "random" {
   min = 1           # Assigns the lowest number.
   max = 100         # Assigns the highest number.
@@ -79,7 +80,7 @@ resource "aws_vpc" "mtc_vpc" {
   enable_dns_support   = true
 
   # This tags name is going to be passed to AWS.
-
+  
   tags = {
     Name = "mtc_vpc-${random_integer.random.id}"   # Referenced random integer resource to assign random integer ID.
   }
@@ -135,7 +136,7 @@ module "networking" {
 - Run <terraform plan> to see which resources will be created.
 - Run <terraform apply --auto-approve> to deploy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 004. Create Public and Private Subnets and CIDR blocks.
 
@@ -237,7 +238,7 @@ resource "aws_subnet" "mtc_private_subnet" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 005. Create Route Tables and The Internet Gateway.
 
@@ -306,7 +307,7 @@ resource "aws_route_table_association" "mtc_public_assoc" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 006. Create VPC Security Groups.
 
@@ -427,7 +428,7 @@ resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 007. RDS set up.
 
@@ -498,6 +499,7 @@ module "database" {
 access_ip = "0.0.0.0/0"
 
 #--db vars --
+
 dbname     = "rancher"
 dbuser     = "bobby"
 dbpassword = "s00p3rS3cr3t"
@@ -564,7 +566,7 @@ output "public_subnets" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
 
 008. ALB (Application Load Balancer) Set Up.
 
@@ -586,10 +588,12 @@ resource "aws_lb_target_group" "mtc_tg" {
   port     = var.tg_port
   protocol = var.tg_protocol
   vpc_id   = var.vpc_id
+
   lifecycle {
-    create_before_destroy = true
-    ignore_changes        = [name]
+    create_before_destroy = true    # This will make sure to create new target group before destroying so listener can be attached.
+    ignore_changes        = [name]  # This will make sure the is not changed.
   }
+
   health_check {
     healthy_threshold   = var.elb_healthy_threshold
     unhealthy_threshold = var.elb_unhealthy_threshold
@@ -673,6 +677,18 @@ module "loadbalancing" {
 }
 
 
+- e. In <loadbalancing/outputs.tf> file add outputs for ALB target group ARN to be consumed by <root/main.tf> and <compute/variables.tf> files.
+
+
+output "lb_target_group_arn" {
+  value = aws_lb_target_group.mtc_tg.arn
+}
+
+output "lb_endpoint" {
+  value = aws_lb.mtc_lb.dns_name
+}
+
+
 - Run <terraform fmt -recursive> to format and clean the code.
 - Run <terraform init> to initialize plugins and new resources.
 - Run <terraform validate> to validate the code.
@@ -680,5 +696,294 @@ module "loadbalancing" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-----------------------------------------------------------------------------------------------------------
+==============================================================================================================
+
+009. Create and Deploy EC2 instances.
+
+- Create <root/compute> folder and <compute/main.tf, variables.tf and outputs.tf> files.
+- a. In <compute/main.tf> file create "aws_ami" data block, "random_id", "aws_key_pair", "aws_instance",
+     and "aws_lb_target_group_attachment" resources.
+
+
+# --- compute/main.tf ---
+
+data "aws_ami" "server_ami" {
+  most_recent = true
+
+  owners = ["099720109477"]
+
+  # This filter block will filter out the latest AMI for the instance.
+  
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"] # date is replaced vs "*" to get latest AMI.
+  }
+}
+
+resource "random_id" "mtc_node_id" {
+  byte_length = 2
+  count       = var.instance_count
+
+  # This keepers block generates different random ID when the resource is changed.
+  
+  keepers = {
+    key_name = var.key_name
+  }
+}
+
+resource "aws_key_pair" "mtc_auth" {
+  key_name   = var.key_name
+  public_key = file(var.public_key_path)  # file func extracts contents of any file, in our case public ssh key.
+}
+
+resource "aws_instance" "mtc_node" {
+  count         = var.instance_count
+  instance_type = var.instance_type
+  ami           = data.aws_ami.server_ami.id
+
+  tags = {
+    Name = "mtc_node-${random_id.mtc_node_id[count.index].dec}"
+  }
+
+  key_name               = aws_key_pair.mtc_auth.id
+  vpc_security_group_ids = [var.public_sg]
+  subnet_id              = var.public_subnets[count.index]
+  user_data = templatefile(var.user_data_path,
+    {
+      nodename    = "mtc-${random_id.mtc_node_id[count.index].dec}"
+      db_endpoint = var.db_endpoint
+      dbuser      = var.dbuser
+      dbpass      = var.dbpassword
+      dbname      = var.dbname
+    }
+  )
+
+
+  root_block_device {
+    volume_size = var.vol_size
+  }
+  provisioner "remote-exec" {
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      host        = self.public_ip
+      private_key = file(var.private_key_path)  # file func will extract the contents of any file.
+    }
+    script = "${path.root}/delay.sh"
+  }
+  provisioner "local-exec" {
+    command = templatefile("${path.cwd}/scp_script.tpl",
+      {
+        nodeip           = self.public_ip
+        k3s_path         = "${path.cwd}/../"
+        nodename         = self.tags.Name
+        private_key_path = var.private_key_path
+      }
+    )
+  }
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f ${path.cwd}/../k3s-mtc_node-*"
+  }
+}
+
+# This resource adds our EC2 instances to the target group.
+resource "aws_lb_target_group_attachment" "mtc_tg_attach" {
+  count            = var.instance_count
+  target_group_arn = var.lb_target_group_arn
+  target_id        = aws_instance.mtc_node[count.index].id
+  port             = var.tg_port
+}
+
+
+- b. In <compute/variables.tf> file create variables to reference in <compute/main.tf> file.
+
+
+# --- compute/variables.tf ---
+
+variable "instance_count" {}
+variable "instance_type" {}
+variable "public_sg" {}
+variable "public_subnets" {}
+variable "vol_size" {}
+variable "public_key_path" {}
+variable "key_name" {}
+variable "dbuser" {}
+variable "dbname" {}
+variable "dbpassword" {}
+variable "db_endpoint" {}
+variable "user_data_path" {}
+variable "lb_target_group_arn" {}
+variable "private_key_path" {}
+variable "tg_port" {}
+
+
+- c. In <compute/outputs.tf> file create an output for the "instance" resource 
+     so <root/main.tf> "compute" module can reference and access it.
+
+
+output "instance" {
+  value     = aws_instance.mtc_node[*]
+  sensitive = true
+}
+
+
+-d. In <root/main.tf> file create "compute" module to reference <root/compute> module and create EC2 instance.
+
+
+module "compute" {
+  source              = "./compute"
+  public_sg           = module.networking.public_sg
+  public_subnets      = module.networking.public_subnets
+  instance_count      = 1
+  instance_type       = "t3.micro"
+  vol_size            = "20"
+  public_key_path     = "/home/ubuntu/.ssh/mtckey.pub"
+  key_name            = "mtckey"
+  dbname              = var.dbname
+  dbuser              = var.dbuser
+  dbpassword          = var.dbpassword
+  db_endpoint         = module.database.db_endpoint
+  user_data_path      = "${path.root}/userdata.tpl"
+  lb_target_group_arn = module.loadbalancing.lb_target_group_arn
+  tg_port             = 8000
+  private_key_path    = "/home/ubuntu/.ssh/mtckey"
+}
+
+
+- e. In <root/locals.tf> file add security group rule for nginx and open ports for 8000.
+
+
+locals {
+  vpc_cidr = "10.123.0.0/16"
+}
+
+locals {
+  security_groups = {
+    public = {
+      name        = "public_sg"
+      description = "public access"
+      ingress = {
+        open = {
+          from        = 0
+          to          = 0
+          protocol    = -1
+          cidr_blocks = [var.access_ip]
+        }
+        tg = {
+          from        = 8000
+          to          = 8000
+          protocol    = "tcp"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+        http = {
+          from        = 80
+          to          = 80
+          protocol    = "tcp"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+        nginx = {
+          from        = 8000
+          to          = 8000
+          protocol    = "tcp"
+          cidr_blocks = ["0.0.0.0/0"]
+        }
+      }
+    }
+    rds = {
+      name        = "rds_sg"
+      description = "rds access"
+      ingress = {
+        mysql = {
+          from        = 3306
+          to          = 3306
+          protocol    = "tcp"
+          cidr_blocks = [local.vpc_cidr]
+        }
+      }
+    }
+  }
+}
+
+
+- f. In <database/outputs.tf> file create "db_endpoint" output which will be consumed by <root/main.tf> "compute" module.
+
+
+# --- database/outputs.tf ---
+
+output "db_endpoint" {
+  value = aws_db_instance.mtc_db.endpoint
+}
+
+
+- g. In <root> create userdata.tpl file which will hold data to run while deploying the k3s clusters.
+
+
+#!/bin/bash
+sudo hostnamectl set-hostname ${nodename} &&
+curl -sfL https://get.k3s.io | sh -s - server \
+--datastore-endpoint="mysql://${dbuser}:${dbpass}@tcp(${db_endpoint})/${dbname}" \
+--write-kubeconfig-mode 644 \
+--tls-san=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+
+
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
+
+
+- h. Connection to our k3s cluster. Copy the public IP address of our mtc_node-12345 cluster.
+
+ssh -i ~/.ssh/ubuntu/keymtc ubuntu@**.***.***.**  # Paste the public IP address. 
+kubectl get nodes
+
+
+- i. Inside the k3s cluster create the NGINX deployment.
+
+vim deployment.yaml
+:set paste  # Inside deployment.yaml file press ":set paste" to make sure that there is no any issues with indentation once pasted.
+
+# Paste the code inside deployment.yaml file.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec :
+  replicas: 2
+  selector:
+    matchLabels:
+      # manage pods with the label app: nginx
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+          hostPort: 8000
+
+# Then type <:wq!> to save the file.
+# Run the and apply the deployment.
+
+kubectl apply -f deployment.yaml
+kubectl get pods
+curl localhost:8000   # To check whether nginx is deployed and working fine.
+
+
+# Now copy the public IPs of two running EC2 instances and paste into the browser and at the end of IP pass port number <:8000>.
+# You must see NGINX deployed and working.
+# After adding our target groups and listener to ALB, copy DNS name url in ALB aws console and paste the url to the browser and 
+  pass the port at the end url:8000. Now you can see NGINX deployed and ALB loadbalancing the traffic to both clusters.
+# If you want to change the cluster port, then just go to the <root/main.tf> "loadbalancing" module and change
+  only "listener_port = 8000", don't change "tg_port = 8000" as it is mapped in for ALB.
+  
+==============================================================================================================
 
