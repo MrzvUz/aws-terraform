@@ -566,3 +566,110 @@ output "public_subnets" {
 
 ----------------------------------------------------------------------------------------------------------
 
+008. ALB (Application Load Balancer) Set Up.
+
+- Create <root/loadbalancing> module folder and create <loadbalancing/main.tf, variables.tf, outputs.tf> files.
+- a. In <loadbalancing/main.tf> file create "aws_lb", "aws_lb_target_group" and "aws_lb_listener" resources.
+
+
+# --- loadbalancing/main.tf ---
+
+resource "aws_lb" "mtc_lb" {
+  name            = "mtc-loadbalancer"
+  subnets         = var.public_subnets
+  security_groups = [var.public_sg]
+  idle_timeout    = 400
+}
+
+resource "aws_lb_target_group" "mtc_tg" {
+  name     = "mtc-lb-tg-${substr(uuid(), 0, 3)}"
+  port     = var.tg_port
+  protocol = var.tg_protocol
+  vpc_id   = var.vpc_id
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
+  health_check {
+    healthy_threshold   = var.elb_healthy_threshold
+    unhealthy_threshold = var.elb_unhealthy_threshold
+    timeout             = var.elb_timeout
+    interval            = var.elb_interval
+  }
+}
+
+resource "aws_lb_listener" "mtc_lb_listener" {
+  load_balancer_arn = aws_lb.mtc_lb.arn
+  port              = var.listener_port
+  protocol          = var.listener_protocol
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.mtc_tg.arn
+  }
+}
+
+
+- b. In <loadbalancing/variables.tf> file create variables for referencing.
+
+
+# --- loadbalancing/variables.tf ---
+
+variable "public_sg" {}
+variable "public_subnets" {}
+variable "tg_port" {}
+variable "tg_protocol" {}
+variable "vpc_id" {}
+variable "elb_healthy_threshold" {}
+variable "elb_unhealthy_threshold" {}
+variable "elb_timeout" {}
+variable "elb_interval" {}
+variable "listener_port" {}
+variable "listener_protocol" {}
+
+
+- c. In <root/main.tf> file configure "loadbalancing" module.
+
+
+module "loadbalancing" {
+  source                  = "./loadbalancing"
+  public_sg               = module.networking.public_sg       # Referenced from <networking.outputs.tf> file.
+  public_subnets          = module.networking.public_subnets  # Referenced from <networking.outputs.tf> file.
+  tg_port                 = 8000
+  tg_protocol             = "HTTP"
+  vpc_id                  = module.networking.vpc_id
+  elb_healthy_threshold   = 2
+  elb_unhealthy_threshold = 2
+  elb_timeout             = 3
+  elb_interval            = 30
+  listener_port           = 80
+  listener_protocol       = "HTTP"
+}
+
+
+- d. In <networking/outputs.tf> file configure "public_sg" and "public_subnets" outputs so <root/main.tf> 
+     "loadbalancing" module can access and pull them from <networking/outputs.tf>. file.
+
+
+# --- networking/outputs.tf ---
+
+output "vpc_id" {
+  value = aws_vpc.mtc_vpc.id
+}
+
+output "db_subnet_group_name" {
+  value = aws_db_subnet_group.mtc_rds_subnetgroup.*.name
+}
+
+output "db_security_group" {
+  value = aws_security_group.mtc_sg["rds"].id
+}
+
+output "public_sg" {
+  value = aws_security_group.mtc_sg["public"].id
+}
+
+output "public_subnets" {
+  value = aws_subnet.mtc_public_subnet.*.id
+}
+
+
