@@ -684,8 +684,39 @@ output "lb_target_group_arn" {
   value = aws_lb_target_group.mtc_tg.arn
 }
 
+# This output gives the ALB DNS name URL to access our NGINX running in k3s clusters.
+
 output "lb_endpoint" {
   value = aws_lb.mtc_lb.dns_name
+}
+
+
+- f. Create <root/outputs.tf> file and add reference to outputs "load_balancer_endpoint", "instances", "kubeconfig" and "k3s" outputs.
+
+# --- root/loadbalancing/outputs.tf ---
+
+# This output spits out the ALB DNS name URL which we can access our NGINX deployment running in k3s clusters.
+
+output "load_balancer_endpoint" {
+  value = module.loadbalancing.lb_endpoint
+}
+
+# This output exposes the public IP addresses of our instances.
+
+# output "instances" {
+#   value = {for i in module.compute.instance : i.tags.Name =>  "${i.public_ip}:${module.compute.instance_port}"}
+#   sensitive = true
+# }
+
+
+output "kubeconfig" {
+  value     = [for i in module.compute.instance : "export KUBECONFIG=../k3s-${i.tags.Name}.yaml"]
+  sensitive = true
+}
+
+output "k3s" {
+  value     = [for i in module.compute.instance : "../k3s-${i.tags.Name}.yaml"][0]
+  sensitive = true
 }
 
 
@@ -762,6 +793,10 @@ resource "aws_instance" "mtc_node" {
   root_block_device {
     volume_size = var.vol_size
   }
+
+  # This provisioner accesses the remote EC2 instance and runs the delay.sh script which checks and verifies
+    that scp_script.tpl file exists to run, if not then it will wait until scp_script.tpl file is created and runs it.
+
   provisioner "remote-exec" {
     connection {
       type        = "ssh"
@@ -781,6 +816,9 @@ resource "aws_instance" "mtc_node" {
       }
     )
   }
+
+  # Executes the command locally and when terraform destroy applied local-exec will delete k3s-mtc_node-* file.
+  
   provisioner "local-exec" {
     when    = destroy
     command = "rm -f ${path.cwd}/../k3s-mtc_node-*"
@@ -984,6 +1022,6 @@ curl localhost:8000   # To check whether nginx is deployed and working fine.
   pass the port at the end url:8000. Now you can see NGINX deployed and ALB loadbalancing the traffic to both clusters.
 # If you want to change the cluster port, then just go to the <root/main.tf> "loadbalancing" module and change
   only "listener_port = 8000", don't change "tg_port = 8000" as it is mapped in for ALB.
-  
+
 ==============================================================================================================
 
