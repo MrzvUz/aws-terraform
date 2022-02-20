@@ -1,9 +1,9 @@
 
 #                        *** AWS 3 Tier Application Project Using Terraform ***
 
-==============================================================================================================
+=====================================================================================
 
-001. Create aws-terraform project folder and configure backend.
+## 001. Create aws-terraform project folder and configure backend.
 
 - Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
 
@@ -23,7 +23,7 @@ terraform {
 - Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
 - Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General> and choose <Local> option so plan and apply occur on local machine.
 
-==============================================================================================================
+=====================================================================================
 
 ## 002. Configure AWS provider.
 
@@ -55,7 +55,7 @@ variable "aws_region" {
 
 - Run <terraform init> to download plugins and initialize the provider.
 
-==============================================================================================================
+=====================================================================================
 
 ## 003. Create VPC resource.
 
@@ -134,7 +134,7 @@ module "networking" {
 - Run <terraform plan> to see which resources will be created.
 - Run <terraform apply --auto-approve> to deploy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 004. Create Public and Private Subnets and CIDR blocks.
 
@@ -235,7 +235,7 @@ resource "aws_subnet" "mtc_private_subnet" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 005. Create Route Tables and The Internet Gateway.
 
@@ -302,7 +302,7 @@ resource "aws_route_table_association" "mtc_public_assoc" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 006. Create VPC Security Groups.
 
@@ -418,7 +418,7 @@ resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 007. RDS set up.
 
@@ -553,7 +553,7 @@ output "public_subnets" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 008. ALB (Application Load Balancer) Set Up.
 
@@ -713,7 +713,7 @@ output "k3s" {
 - Run <terraform apply --auto-approve> to deploy the resources.
 - Run <terraform destroy --auto-approve> to destroy the resources.
 
-==============================================================================================================
+=====================================================================================
 
 ## 009. Create and Deploy EC2 instances.
 
@@ -1005,5 +1005,4 @@ You must see NGINX deployed and working.
 After adding our target groups and listener to ALB, copy DNS name url in ALB aws console and paste the url to the browser and pass the port at the end url:8000. Now you can see NGINX deployed and ALB loadbalancing the traffic to both clusters.
 If you want to change the cluster port, then just go to the <root/main.tf> "loadbalancing" module and changeonly "listener_port = 8000", don't change "tg_port = 8000" as it is mapped in for ALB.
 
-==============================================================================================================
-
+=====================================================================================
