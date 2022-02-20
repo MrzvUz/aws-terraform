@@ -3,9 +3,9 @@
 
 ==============================================================================================================
 
-## 001. Create aws-terraform project folder and configure backend.
+001. Create aws-terraform project folder and configure backend.
 
-#### - Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
+- Configure <root/backend.tf> file to store terraform state metadata and lock the state file for teamwork.
 
 ```
 terraform {
@@ -19,15 +19,15 @@ terraform {
 }
 ```
 
-#### - Enter command <terraform login> in the cli to request API token in terraform cloud.
-#### - Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
-#### - Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General> and choose <Local> option so plan and apply occur on local machine.
+- Enter command <terraform login> in the cli to request API token in terraform cloud.
+- Press the link on cli and give a name for token. Copy the generated API token and paste in the cli.
+- Initialize by passing the command <terraform init>. In terraform cloud, go to <Settings> - <General> and choose <Local> option so plan and apply occur on local machine.
 
 ==============================================================================================================
 
 ## 002. Configure AWS provider.
 
-#### - Create <root/providers.tf file>
+- Create <root/providers.tf file>
 
 ```
 terraform {
@@ -43,27 +43,27 @@ provider "aws" {
 }
 ```
 
-#### - Create <root/variables.tf> file.
+- Create <root/variables.tf> file.
 
 
-#### This Region value will be referenced in <root/providers.tf> file.
+This Region value will be referenced in <root/providers.tf> file.
 ```
 variable "aws_region" {
   default = "us-east-1"       # passed region variable in <root/providers.tf> file.
 }
 ```
 
-#### - Run <terraform init> to download plugins and initialize the provider.
+- Run <terraform init> to download plugins and initialize the provider.
 
 ==============================================================================================================
 
 ## 003. Create VPC resource.
 
-#### - Create <root/networking> module folder.
-#### - Inside networking folder create <main.tf>, <outputs.tf> and <variables.tf> files.
-#### - In <root/networking/main.tf> file create VPC resources.
+- Create <root/networking> module folder.
+- Inside networking folder create <main.tf>, <outputs.tf> and <variables.tf> files.
+- In <root/networking/main.tf> file create VPC resources.
 
-#### This resource creates random integer which allows to assign new random number to VPC.
+This resource creates random integer which allows to assign new random number to VPC.
 ```
 resource "random_integer" "random" {
   min = 1           # Assigns the lowest number.
@@ -92,7 +92,7 @@ resource "aws_vpc" "mtc_vpc" {
 }
 ```
 
-#### - Configure the values in <networking/variables.tf> file which references in <networking/main.tf> file.
+- Configure the values in <networking/variables.tf> file which references in <networking/main.tf> file.
 
 ```
 # This variable being referenced in VPC resource in <networking/main.tf>
@@ -106,7 +106,7 @@ variable "access_ip" {  # Referenced from <root/mainl.tf>, <networking/main.tf, 
 }
 ```
 
-#### - Configure <networking/outputs.tf> file so that <root/main.tf> can consume VPC outputs from <networking/main.tf> to create VPC
+- Configure <networking/outputs.tf> file so that <root/main.tf> can consume VPC outputs from <networking/main.tf> to create VPC
   and pass them on to other modules.
 
 
@@ -117,7 +117,7 @@ output "vpc_id" {
 }
 ```
 
-#### - In <root/main.tf> file create module and reference VPC resource from <networking/main.tf> file.
+- In <root/main.tf> file create module and reference VPC resource from <networking/main.tf> file.
 
 ```
 # Deploys <networking/main.tf> resources.
@@ -128,18 +128,18 @@ module "networking" {
 }
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
 
 ==============================================================================================================
 
 ## 004. Create Public and Private Subnets and CIDR blocks.
 
 
-#### - In <root/main.tf> file update "networking" module to reference "networking" module.
+- In <root/main.tf> file update "networking" module to reference "networking" module.
 
 ```
 # Deploy Networking Resources
@@ -158,7 +158,7 @@ module "networking" {
   db_subnet_group  = false    # Referenced from <networking/main.tf, variables.tf> which determines to deploy subnet group or not. 
 }
 ```
-#### I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
+I used for loop with cidrsubnet function and range method which calculates a subnet addresses within assigns dynamic range of IP address prefixes.
 Example of assigning IP addresses dynamically: 
 On the CLI type "terraform console" and pass the for loop function: [for i in range(1, 255, 2) : cidrsubnet("10.123.0.0/16", 8, i)]
 For private_cidrs, for index of in range of 1 to 255 steps over by 2 and calculates from cidrsubnet of 10.123.0.0/16, increment to 8
@@ -167,10 +167,10 @@ For public_cidrs, for index of in range of 2 to 255 steps over by 2 and calculat
 which would be /24 and increase it by 1 which gives result of 10.123.1.0/24.
 
 
-#### - Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
+- Once finished updating module "networking" in <root/main.tf>, reference them in <networking/variables.tf> file.
 
 
-#### Created these variables in <networking/variables.tf> and referenced to module "networking" block in <root/main.tf, locals.tf> files.
+Created these variables in <networking/variables.tf> and referenced to module "networking" block in <root/main.tf, locals.tf> files.
 ```
 variable "vpc_cidr" {}
 variable "public_cidrs" {}
@@ -183,15 +183,15 @@ variable "security_groups" {}
 variable "db_subnet_group" {}
 ```
 
-#### - Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
+- Next create data source for AZ, public and private aws_subnet resource in <networking/main.tf> file.
 
 
-#### This data source enables to assign random Availability zone for each subnet which mitigates running out of AZs.
+This data source enables to assign random Availability zone for each subnet which mitigates running out of AZs.
 ```
 data "aws_availability_zones" "available" {}  # Referenced in aws_subnet resource.
 ```
 
-#### - Create random_shuffle resource to randomly shuffle AZs and assign subnet to each shuffled AZs so I don't run out of AZs.
+- Create random_shuffle resource to randomly shuffle AZs and assign subnet to each shuffled AZs so I don't run out of AZs.
 
 ```
 resource "random_shuffle" "public_az" {
@@ -228,18 +228,18 @@ resource "aws_subnet" "mtc_private_subnet" {
 }
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ==============================================================================================================
 
 ## 005. Create Route Tables and The Internet Gateway.
 
-#### - Create aws_internet_gateway resource in <networking/main.tf> file.
+- Create aws_internet_gateway resource in <networking/main.tf> file.
 
 ```
 resource "aws_internet_gateway" "mtc_internet_gateway" {
@@ -251,7 +251,7 @@ resource "aws_internet_gateway" "mtc_internet_gateway" {
 }
 ```
 
-#### - Create public "aws_route_table" in <networking/main.tf> file.
+- Create public "aws_route_table" in <networking/main.tf> file.
 
 ```
 resource "aws_route_table" "mtc_public_rt" {
@@ -263,7 +263,7 @@ resource "aws_route_table" "mtc_public_rt" {
 }
 ```
 
-#### - Create default public "aws_route" in <networking/main.tf> file to auto assign to default route if no public route table explicitly specified.
+- Create default public "aws_route" in <networking/main.tf> file to auto assign to default route if no public route table explicitly specified.
 
 ```
 resource "aws_route" "default_route" {
@@ -273,7 +273,7 @@ resource "aws_route" "default_route" {
 }
 ```
 
-#### - Create private "aws_default_route_table" in <networking/main.tf> file to auto assign private route tables if there is no explicit route table is specified.
+- Create private "aws_default_route_table" in <networking/main.tf> file to auto assign private route tables if there is no explicit route table is specified.
 
 ```
 resource "aws_default_route_table" "mtc_private_rt" {
@@ -285,7 +285,7 @@ resource "aws_default_route_table" "mtc_private_rt" {
 }
 ```
 
-#### - Create "aws_route_table_association" in <networking/main.tf> file to associate public RTs with public subnets.
+- Create "aws_route_table_association" in <networking/main.tf> file to associate public RTs with public subnets.
 
 ```
 resource "aws_route_table_association" "mtc_public_assoc" {
@@ -295,18 +295,18 @@ resource "aws_route_table_association" "mtc_public_assoc" {
 }
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ==============================================================================================================
 
 ## 006. Create VPC Security Groups.
 
-#### - First create <root/locals.tf> file and pass the following blocks so that I don't have to repeat and have value in one place and reference elsewhere.
+- First create <root/locals.tf> file and pass the following blocks so that I don't have to repeat and have value in one place and reference elsewhere.
 
 ```
 locals {
@@ -314,7 +314,7 @@ locals {
 }
 ```
 
-#### This "locals" block wil be dynamically  referenced in <networking.main.tf>
+This "locals" block wil be dynamically  referenced in <networking.main.tf>
 ```
 locals {
   security_groups = {
@@ -351,13 +351,13 @@ locals {
   }
 }
 ```
-#### This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
+This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
 
 
-#### - Create "aws_security_group" resource in <networking.main.tf> file.
+- Create "aws_security_group" resource in <networking.main.tf> file.
 
 
-#### This resource creates public Security Group. It's referenced from <root/locals.tf> file.
+This resource creates public Security Group. It's referenced from <root/locals.tf> file.
 ```
 resource "aws_security_group" "mtc_sg" {
   for_each    = var.security_groups
@@ -386,19 +386,19 @@ resource "aws_security_group" "mtc_sg" {
 }
 ```
 
-#### - In <networking/validates.tf> file create variable for "access_ip" to reference "cidr_blocks" in "dynamic ingress" of Public Security Group. And also reference in <root/main.tf> and <root/terraform.tfvars> files which I have alreadyresourced above.
-#### - Create <root/terraform.tfvars> file to store credentials such as IP addresses. This file must be included in .gitignore file.
+- In <networking/validates.tf> file create variable for "access_ip" to reference "cidr_blocks" in "dynamic ingress" of Public Security Group. And also reference in <root/main.tf> and <root/terraform.tfvars> files which I have alreadyresourced above.
+- Create <root/terraform.tfvars> file to store credentials such as IP addresses. This file must be included in .gitignore file.
 
 ```
 access_ip = "0.0.0.0/0"
 ```
-#### This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
+This "access_ip" is passed from <root/terraform.tfvars> to <root/variables.tf> to <root/main.tf> to <networking/variables.tf> and finally "access_ip" is specified in <networking/main.tf> of "aws_security_group" resource at "cidr_blocks = [var.access_ip]"
 
 
-#### - VPC RDS Subnet Group and Conditionals which dictates the pull of subnets for RDS instances.
+- VPC RDS Subnet Group and Conditionals which dictates the pull of subnets for RDS instances.
 
 
-#### This resource creates "aws_db_subnet_group" 
+This resource creates "aws_db_subnet_group" 
 ```
 resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
   count      = var.db_subnet_group == "true" ? 1 : 0    # Determines to deploy subnet group or not.
@@ -411,22 +411,22 @@ resource "aws_db_subnet_group" "mtc_rds_subnetgroup" {
 ```
 
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ==============================================================================================================
 
 ## 007. RDS set up.
 
-#### - Create <root/database> folder and create <database/main.tf, variables.tf> files.
-#### - a. In <database/main.tf> file create the "aws_db_instance" resource.
+- Create <root/database> folder and create <database/main.tf, variables.tf> files.
+- a. In <database/main.tf> file create the "aws_db_instance" resource.
 
 
-#### --- database/main.tf ---
+# --- database/main.tf ---
 ```
 resource "aws_db_instance" "mtc_db" {
   allocated_storage      = 10
@@ -446,10 +446,10 @@ resource "aws_db_instance" "mtc_db" {
 }
 ```
 
-#### - b. In <database/variables.tf> file reference parameters from module "database" in <root/main.tf> file.
+- b. In <database/variables.tf> file reference parameters from module "database" in <root/main.tf> file.
 
 
-#### --- database/variables.tf ---
+# --- database/variables.tf ---
 ```
 variable "db_instance_class" {}
 variable "dbname" {}
@@ -462,10 +462,10 @@ variable "db_identifier" {}
 variable "skip_db_snapshot" {}
 ```
 
-#### - c. In <root/main.tf> file create "database" module and configure key value parameters to reference in <database/variables.tf> file.
+- c. In <root/main.tf> file create "database" module and configure key value parameters to reference in <database/variables.tf> file.
 
 
-#### --- root/main.tf ---
+# --- root/main.tf ---
 ```
 module "database" {
   source                 = "./database"
@@ -481,7 +481,7 @@ module "database" {
 }
 ```
 
-#### - d. In <root/terraform.tfvars> file configure sensitive data to reference in <root/main.tf> "database" module.
+- d. In <root/terraform.tfvars> file configure sensitive data to reference in <root/main.tf> "database" module.
 
 ```
 # --- root/terraform.tfvars ---
@@ -493,12 +493,12 @@ dbuser     = "bobby"
 dbpassword = "s00p3rS3cr3t"
 ```
 
-#### - e. In <root/variables.tf> file configure variables to reference in <root/main.tf> file.
+- e. In <root/variables.tf> file configure variables to reference in <root/main.tf> file.
 
 ```
 # --- root/variables.tf ---
 
- # --------aws providers region variable
+# --------aws providers region variable
 
 variable "aws_region" {
   default = "us-west-2"
@@ -520,7 +520,7 @@ variable "dbpassword" {
 }
 ```
 
-#### - f. In <networking/variables.tf> file configure outputs so "database" module can access outputs for "db_subnet_group_name" and "db_security_group".
+- f. In <networking/variables.tf> file configure outputs so "database" module can access outputs for "db_subnet_group_name" and "db_security_group".
 
 ```
  # --- networking/outputs.tf ---
@@ -546,19 +546,19 @@ output "public_subnets" {
 }
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ==============================================================================================================
 
 ## 008. ALB (Application Load Balancer) Set Up.
 
-#### - Create <root/loadbalancing> module folder and create <loadbalancing/main.tf, variables.tf, outputs.tf> files.
-#### - a. In <loadbalancing/main.tf> file create "aws_lb", "aws_lb_target_group" and "aws_lb_listener" resources.
+- Create <root/loadbalancing> module folder and create <loadbalancing/main.tf, variables.tf, outputs.tf> files.
+- a. In <loadbalancing/main.tf> file create "aws_lb", "aws_lb_target_group" and "aws_lb_listener" resources.
 
 ```
 # --- loadbalancing/main.tf ---
@@ -600,7 +600,7 @@ resource "aws_lb_listener" "mtc_lb_listener" {
 }
 ```
 
-#### - b. In <loadbalancing/variables.tf> file create variables for referencing.
+- b. In <loadbalancing/variables.tf> file create variables for referencing.
 
 ```
 # --- loadbalancing/variables.tf ---
@@ -618,7 +618,7 @@ variable "listener_port" {}
 variable "listener_protocol" {}
 ```
 
-#### - c. In <networking/outputs.tf> file configure "public_sg" and "public_subnets" outputs so <root/main.tf> "loadbalancing" module can access and pull them from <networking/outputs.tf>. file.
+- c. In <networking/outputs.tf> file configure "public_sg" and "public_subnets" outputs so <root/main.tf> "loadbalancing" module can access and pull them from <networking/outputs.tf>. file.
 
 ```
 # --- networking/outputs.tf ---
@@ -644,7 +644,7 @@ output "public_subnets" {
 }
 ```
 
-#### - d. In <root/main.tf> file configure "loadbalancing" module.
+- d. In <root/main.tf> file configure "loadbalancing" module.
 
 ```
 module "loadbalancing" {
@@ -663,7 +663,7 @@ module "loadbalancing" {
 }
 ```
 
-#### - e. In <loadbalancing/outputs.tf> file add outputs for ALB target group ARN to be consumed by <root/main.tf> and <compute/variables.tf> files.
+- e. In <loadbalancing/outputs.tf> file add outputs for ALB target group ARN to be consumed by <root/main.tf> and <compute/variables.tf> files.
 
 ```
 output "lb_target_group_arn" {
@@ -677,7 +677,7 @@ output "lb_endpoint" {
 }
 ```
 
-#### - f. Create <root/outputs.tf> file and add reference to outputs "load_balancer_endpoint", "instances", "kubeconfig" and "k3s" outputs.
+- f. Create <root/outputs.tf> file and add reference to outputs "load_balancer_endpoint", "instances", "kubeconfig" and "k3s" outputs.
 ```
 # --- root/loadbalancing/outputs.tf ---
 
@@ -706,19 +706,19 @@ output "k3s" {
 }
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 ==============================================================================================================
 
 ## 009. Create and Deploy EC2 instances.
 
-#### - Create <root/compute> folder and <compute/main.tf, variables.tf and outputs.tf> files.
-#### - a. In <compute/main.tf> file create "aws_ami" data block, "random_id", "aws_key_pair", "aws_instance", and "aws_lb_target_group_attachment" resources.
+- Create <root/compute> folder and <compute/main.tf, variables.tf and outputs.tf> files.
+- a. In <compute/main.tf> file create "aws_ami" data block, "random_id", "aws_key_pair", "aws_instance", and "aws_lb_target_group_attachment" resources.
 
 ```
 # --- compute/main.tf ---
@@ -819,7 +819,7 @@ resource "aws_lb_target_group_attachment" "mtc_tg_attach" {
 }
 ```
 
-#### - b. In <compute/variables.tf> file create variables to reference in <compute/main.tf> file.
+- b. In <compute/variables.tf> file create variables to reference in <compute/main.tf> file.
 
 ```
 # --- compute/variables.tf ---
@@ -841,7 +841,7 @@ variable "private_key_path" {}
 variable "tg_port" {}
 ```
 
-#### - c. In <compute/outputs.tf> file create an output for the "instance" resource so <root/main.tf> "compute" module can reference and access it.
+- c. In <compute/outputs.tf> file create an output for the "instance" resource so <root/main.tf> "compute" module can reference and access it.
 
 ```
 output "instance" {
@@ -850,7 +850,7 @@ output "instance" {
 }
 ```
 
-#### -d. In <root/main.tf> file create "compute" module to reference <root/compute> module and create EC2 instance.
+- d. In <root/main.tf> file create "compute" module to reference <root/compute> module and create EC2 instance.
 
 ```
 module "compute" {
@@ -873,7 +873,7 @@ module "compute" {
 }
 ```
 
-#### - e. In <root/locals.tf> file add security group rule for nginx and open ports for 8000.
+- e. In <root/locals.tf> file add security group rule for nginx and open ports for 8000.
 
 ```
 locals {
@@ -928,7 +928,7 @@ locals {
 }
 ```
 
-#### - f. In <database/outputs.tf> file create "db_endpoint" output which will be consumed by <root/main.tf> "compute" module.
+- f. In <database/outputs.tf> file create "db_endpoint" output which will be consumed by <root/main.tf> "compute" module.
 
 ```
 # --- database/outputs.tf ---
@@ -938,7 +938,7 @@ output "db_endpoint" {
 }
 ```
 
-#### - g. In <root> create userdata.tpl file which will hold data to run while deploying the k3s clusters.
+- g. In <root> create userdata.tpl file which will hold data to run while deploying the k3s clusters.
 
 ```
 #!/bin/bash
@@ -949,26 +949,26 @@ curl -sfL https://get.k3s.io | sh -s - server \
 --tls-san=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
 ```
 
-#### - Run <terraform fmt -recursive> to format and clean the code.
-#### - Run <terraform init> to initialize plugins and new resources.
-#### - Run <terraform validate> to validate the code.
-#### - Run <terraform plan> to see which resources will be created.
-#### - Run <terraform apply --auto-approve> to deploy the resources.
-#### - Run <terraform destroy --auto-approve> to destroy the resources.
+- Run <terraform fmt -recursive> to format and clean the code.
+- Run <terraform init> to initialize plugins and new resources.
+- Run <terraform validate> to validate the code.
+- Run <terraform plan> to see which resources will be created.
+- Run <terraform apply --auto-approve> to deploy the resources.
+- Run <terraform destroy --auto-approve> to destroy the resources.
 
 
-#### - h. Connection to our k3s cluster. Copy the public IP address of our mtc_node-12345 cluster.
+- h. Connection to our k3s cluster. Copy the public IP address of our mtc_node-12345 cluster.
 ```
 ssh -i ~/.ssh/ubuntu/keymtc ubuntu@**.***.***.**  # Paste the public IP address. 
 kubectl get nodes
 ```
 
-#### - i. Inside the k3s cluster create the NGINX deployment.
+- i. Inside the k3s cluster create the NGINX deployment.
 ```
 vim deployment.yaml
 :set paste  # Inside deployment.yaml file press ":set paste" to make sure that there is no any issues with indentation once pasted.
 ```
-#### Paste the code inside deployment.yaml file.
+Paste the code inside deployment.yaml file.
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -992,18 +992,18 @@ spec :
         - containerPort: 80
           hostPort: 8000
 ```
-#### Then type <:wq!> to save the file.
-#### Run the and apply the deployment.
+Then type <:wq!> to save the file.
+Run the and apply the deployment.
 ```
 kubectl apply -f deployment.yaml
 kubectl get pods
 curl localhost:8000   # To check whether nginx is deployed and working fine.
 ```
 
-#### Now copy the public IPs of two running EC2 instances and paste into the browser and at the end of IP pass port number <:8000>.
-#### You must see NGINX deployed and working.
-#### After adding our target groups and listener to ALB, copy DNS name url in ALB aws console and paste the url to the browser and pass the port at the end url:8000. Now you can see NGINX deployed and ALB loadbalancing the traffic to both clusters.
-#### If you want to change the cluster port, then just go to the <root/main.tf> "loadbalancing" module and changeonly "listener_port = 8000", don't change "tg_port = 8000" as it is mapped in for ALB.
+Now copy the public IPs of two running EC2 instances and paste into the browser and at the end of IP pass port number <:8000>.
+You must see NGINX deployed and working.
+After adding our target groups and listener to ALB, copy DNS name url in ALB aws console and paste the url to the browser and pass the port at the end url:8000. Now you can see NGINX deployed and ALB loadbalancing the traffic to both clusters.
+If you want to change the cluster port, then just go to the <root/main.tf> "loadbalancing" module and changeonly "listener_port = 8000", don't change "tg_port = 8000" as it is mapped in for ALB.
 
 ==============================================================================================================
 
